@@ -1,4 +1,5 @@
 package main
+
 import
 	(	
 		"testing"
@@ -16,7 +17,7 @@ func TestInput(t *testing.T) {
 		{input: "    hello  world", want: []string{"hello", "world"}},
 		{input: "   bulbasaur  ", want: []string{"bulbasaur"}},
 		{input: "  ", want: []string{}},
-		{input: "Charmander Bulbasaur Squirtle Pikachu", want: []string{"Charmander", "Bulbasaur", "Squirtle", "Pikachu"}},
+		{input: "Charmander Bulbasaur Squirtle Pikachu", want: []string{"charmander", "bulbasaur", "squirtle", "pikachu"}},
 	}
 
 	for _, testCase := range tests {

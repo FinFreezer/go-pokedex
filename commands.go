@@ -5,6 +5,7 @@ import(
 	f "fmt"
 	"os"
 	api "github.com/FinFreezer/go-pokedex/apihandler"
+	//cache "github.com/FinFreezer/go-pokedex/internal"
 	) 
 
 func CommandInterpreter(input string, config *api.Config) (*api.Config) {
@@ -26,7 +27,7 @@ func CommandInterpreter(input string, config *api.Config) (*api.Config) {
 
 func displayHelp(config *api.Config) (*api.Config, error) {
 	f.Println("Welcome to the Pokedex!")
-	f.Println("Usage: \n")
+	f.Println("Usage: ")
 	commands := returnCurrentCommands()
 	for _, value := range commands {
 		f.Printf("%v: %v\n", value.name, value.description)

@@ -6,6 +6,7 @@ import (
     "bufio"
     "os"
     api "github.com/FinFreezer/go-pokedex/apihandler"
+    //cache "github.com/FinFreezer/go-pokedex/internal"
 )
 
 func main() {
@@ -21,7 +22,5 @@ func main() {
 }
 
 func cleanInput (text string) []string {
-    //separatedStrings := []string
-
     return strings.Fields(strings.ToLower(text))
 }
