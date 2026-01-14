@@ -5,15 +5,17 @@ import (
     "strings"
     "bufio"
     "os"
+    api "github.com/FinFreezer/go-pokedex/apihandler"
 )
 
 func main() {
     scanner := bufio.NewScanner(os.Stdin)
+    var config *api.Config
     for {
         fmt.Print("Pokedex > ")
         scanner.Scan()
         input := cleanInput(scanner.Text())
-        CommandInterpreter(input[0])
+        config = CommandInterpreter(input[0], config)
         
     }
 }

@@ -4,40 +4,65 @@ import(
 	"errors"	
 	f "fmt"
 	"os"
+	api "github.com/FinFreezer/go-pokedex/apihandler"
 	) 
 
-func CommandInterpreter(input string){
+func CommandInterpreter(input string, config *api.Config) (*api.Config) {
 
 	commands := returnCurrentCommands()
 
 	if _, ok := commands[input]; ok {
-		commands[input].callback()
+		config, err := commands[input].callback(config)
+		if err != nil {
+			f.Println("Error reaching command, %w", err)
+			return config
+		}
+		return config
 	} else {
-		f.Println("Uknown command")
-		return
+		f.Println("Unknown command")
+		return config
 	}
 }
 
-func displayHelp() error {
+func displayHelp(config *api.Config) (*api.Config, error) {
 	f.Println("Welcome to the Pokedex!")
 	f.Println("Usage: \n")
 	commands := returnCurrentCommands()
 	for _, value := range commands {
 		f.Printf("%v: %v\n", value.name, value.description)
 	}
-	return errors.New("Blalba")
+	return config, errors.New("Blalba")
 }
 
-func commandExit() error {
+func commandExit(config *api.Config) (*api.Config, error) {
     f.Println("Closing the Pokedex... Goodbye!")
     os.Exit(0)
-    return errors.New("Blabla")
+    return config, errors.New("Blabla")
+}
+
+func getNextLoc(config *api.Config) (*api.Config, error) {
+	if config == nil {
+		f.Println("Calling API with Init")
+		config = api.Start(config, "Init")
+		return config, nil
+	
+	} else {
+		f.Println("Calling API with Next")
+		config = api.Start(config, "Next")
+		return config, nil
+	}
+}
+
+func getPreviousLoc(config *api.Config) (*api.Config, error) {
+	f.Println("Calling API with Previous")
+	api.Start(config, "Previous")
+	return config, nil
 }
 
 type cliCommand struct {
 		name        string
 		description string
-		callback    func() error
+		callback    func(*api.Config) (*api.Config, error)
 	}
 
 func returnCurrentCommands() map[string]cliCommand {
@@ -51,6 +76,16 @@ func returnCurrentCommands() map[string]cliCommand {
 			name:		 "help",
 			description: "Displays a help message",
 			callback:     displayHelp,
+		},
+		"map": {
+			name: 		 "map",
+			description: "Display 20 locations from the world map",
+			callback: 	 getNextLoc,
+		},
+		"mapb": {
+			name: 		 "mapb",
+			description: "Display the previous 20 locations from the world map",
+			callback: 	  getPreviousLoc,
 		},
 	}
 	return commands
