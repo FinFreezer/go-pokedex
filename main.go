@@ -6,7 +6,7 @@ import (
     "bufio"
     "os"
     api "github.com/FinFreezer/go-pokedex/apihandler"
-    //cache "github.com/FinFreezer/go-pokedex/internal"
+    //cache "github.com/FinFreezer/go-pokedex/internal/pokecache"
 )
 
 func main() {

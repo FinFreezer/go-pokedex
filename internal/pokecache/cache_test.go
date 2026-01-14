@@ -1,11 +1,11 @@
 package pokecache
 
 import
-	(	
-		"testing"
-		"time"
-		"fmt"
-	)
+(	
+	"testing"
+	"time"
+	"fmt"
+)
 
 func TestAddGet(t *testing.T) {	
 	const interval = 5 * time.Second
