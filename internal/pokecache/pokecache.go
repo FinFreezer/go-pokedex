@@ -8,20 +8,20 @@ import
 
 type cacheEntry struct {
 	createdAt time.Time
-	val []byte
+	Val []byte
 }
 
 type Cache struct {
-	entries map[string]cacheEntry
+	Entries map[string]cacheEntry
 	mu *sync.Mutex
 }
 
 func NewCache(interval time.Duration) (nc *Cache){
 	cache := &Cache{
-		entries: make(map[string]cacheEntry),
+		Entries: make(map[string]cacheEntry),
 		mu: &sync.Mutex{},
 	}
-	
+	cache.reapLoop(interval)
 	go cache.timer(interval)
 	return cache
 }
@@ -38,12 +38,13 @@ func (c *Cache) timer(interval time.Duration) {
 func (c *Cache) Add(key string, val []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if _, ok := c.entries[key]; !ok {
+	
+	if _, ok := c.Entries[key]; !ok {
 		cache := cacheEntry{
 			createdAt: time.Now(),
-				  val: val,
+				  Val: val,
 		}
-		c.entries[key] = cache
+		c.Entries[key] = cache
 	}
 
 	return
@@ -53,8 +54,8 @@ func (c *Cache) Get(key string) (entry []byte, found bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if _, ok := c.entries[key]; ok {
-		return c.entries[key].val, true
+	if _, ok := c.Entries[key]; ok {
+		return c.Entries[key].Val, true
 	}
 
 	return []byte{}, false
@@ -64,9 +65,9 @@ func (c *Cache) reapLoop(inter time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for key, val := range c.entries {
+	for key, val := range c.Entries {
 		if time.Since(val.createdAt) > inter {
-			delete(c.entries, key)
+			delete(c.Entries, key)
 		}
 	}
 	return
