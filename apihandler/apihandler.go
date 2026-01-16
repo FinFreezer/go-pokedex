@@ -11,8 +11,9 @@ import
 	"time"
 )
 
-const interval = (60 * time.Second)
+const interval = (20 * time.Second)
 var pcache *c.Cache
+var lastArea *Area
 
 type Config struct {
 	Count    int    `json:"count"`
@@ -24,11 +25,64 @@ type Config struct {
 	} `json:"results"`
 }
 
-func Start(config *Config, direction string) (*Config){
+type Area struct {
+	ID                   int    `json:"id"`
+	Name                 string `json:"name"`
+	GameIndex            int    `json:"game_index"`
+	EncounterMethodRates []struct {
+		EncounterMethod struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"encounter_method"`
+		VersionDetails []struct {
+			Rate    int `json:"rate"`
+			Version struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"version"`
+		} `json:"version_details"`
+	} `json:"encounter_method_rates"`
+	Location struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"location"`
+	Names []struct {
+		Name     string `json:"name"`
+		Language struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"language"`
+	} `json:"names"`
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+		VersionDetails []struct {
+			Version struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"version"`
+			MaxChance        int `json:"max_chance"`
+			EncounterDetails []struct {
+				MinLevel        int   `json:"min_level"`
+				MaxLevel        int   `json:"max_level"`
+				ConditionValues []any `json:"condition_values"`
+				Chance          int   `json:"chance"`
+				Method          struct {
+					Name string `json:"name"`
+					URL  string `json:"url"`
+				} `json:"method"`
+			} `json:"encounter_details"`
+		} `json:"version_details"`
+	} `json:"pokemon_encounters"`
+}
+
+func Start(config *Config, direction string, addParams []string) (*Config){
 	if pcache == nil {
 		pcache = c.NewCache(interval)
 	}
-	locMap, err := getLocBatch(config, direction, pcache)
+	locMap, err := getLocBatch(config, direction, pcache, addParams)
 
 	if err != nil {
 		fmt.Println("Error getting locations.")
@@ -49,45 +103,94 @@ func printBatch(locMap *Config) {
 	return
 }
 
-func getLocBatch(config *Config, direction string, cache *c.Cache) (*Config, error) {
+func getLocDetails(config *Config, cache *c.Cache, addParams []string) (error) {
+	URL := "https://pokeapi.co/api/v2/location-area/" + addParams[0]
+
+	if _, ok := cache.Get(URL); ok {
+		fmt.Println("Accessing cached data for Location for URL: " + URL)
+		data, _ := cache.Get(URL)
+		json.Unmarshal(data, &lastArea)
+		printLocDetails()
+		return nil
+	}
+
+	res, err := http.Get(URL)
+	defer res.Body.Close()
+
+	if err != nil {
+		return err
+	}
+
+	data, error := io.ReadAll(res.Body)
+	json.Unmarshal(data, &lastArea)
+	
+	if error != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+	printLocDetails()
+	cache.Add(URL, data)
+	return nil
+}
+
+func printLocDetails() {
+	if lastArea == nil {
+		fmt.Println("No locations found, continuing.")
+		return
+	}
+	fmt.Println("Exploring " + lastArea.Name + "...")
+	fmt.Println("Found Pokemon: ")
+	for _, encounters := range lastArea.PokemonEncounters {
+		fmt.Println("- " + encounters.Pokemon.Name)
+	}
+
+	return
+}
+
+func getLocBatch(config *Config, direction string, cache *c.Cache, addParams []string) (*Config, error) {
 	URL := "https://pokeapi.co/api/v2/location-area?offset=0&limit=20"
-	if direction == "Init" {
-		res, err := http.Get(URL)
-		defer res.Body.Close()
 
-		if err != nil {
-			return config, err
-		}
+	switch direction {
+		case "Init":
+			res, err := http.Get(URL)
+			defer res.Body.Close()
 
-		data, error := io.ReadAll(res.Body)
-		json.Unmarshal(data, &config)
+			if err != nil {
+				return config, err
+			}
+
+			data, error := io.ReadAll(res.Body)
+			json.Unmarshal(data, &config)
+			
+			if error != nil {
+				return config, fmt.Errorf("error creating request: %w", err)
+			}
+
+			cache.Add(URL, data)
+			printBatch(config)
+			return config, nil
 		
-		if error != nil {
-			return config, fmt.Errorf("error creating request: %w", err)
-		}
+		case "Next":
+			config, err := nextBatch(config, cache)
+			if err != nil {
+				println("Error getting next batch.")
+				return config, err
+			}
+			return config, err
 
-		cache.Add(URL, data)
-		printBatch(config)
-		return config, nil
-	
-	} else if direction == "Next" {
-		config, err := nextBatch(config, cache)
-		if err != nil {
-			println("Error getting next batch.")
+		case "Previous":
+			config, err := previousBatch(config, cache)
+			if err != nil {
+				println("Error getting previous batch.")
+				return config, err
+			}
 			return config, err
-		}
-		return config, err
-	
-	} else if direction == "Previous" {
-		config, err := previousBatch(config, cache)
-		if err != nil {
-			println("Error getting previous batch.")
+		
+		case "Explore":
+			err := getLocDetails(config, cache, addParams)
 			return config, err
-		}
-		return config, err
-	
-	} else {
-		return config, errors.New("Unexpected error with *config")
+		
+		default:
+			return config, errors.New("Unexpected error with *config")
 	}
 }
 

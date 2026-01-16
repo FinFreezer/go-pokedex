@@ -16,7 +16,7 @@ func main() {
         fmt.Print("Pokedex > ")
         scanner.Scan()
         input := cleanInput(scanner.Text())
-        config = CommandInterpreter(input[0], config)
+        config = CommandInterpreter(config, input)
         
     }
 }
