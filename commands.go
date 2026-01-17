@@ -65,6 +65,21 @@ func exploreLoc(config *api.Config, addParams []string) (*api.Config, error) {
 	return config, nil
 }
 
+func commandCatch(config *api.Config, addParams []string) (*api.Config, error)  {
+	api.Start(config, "Catch", addParams)
+	return config, nil
+}
+
+func commandInspect(config *api.Config, addParams []string) (*api.Config, error) {
+	api.Start(config, "Inspect", addParams)
+	return config, nil
+}
+
+func commandPokedex(config *api.Config, addParams []string) (*api.Config, error){
+	api.Start(config, "Pokedex", addParams)
+	return config, nil
+}
+
 type cliCommand struct {
 		name        string
 		description string
@@ -97,6 +112,21 @@ func returnCurrentCommands() map[string]cliCommand {
 			name:		 "explore",
 			description: "List all Pokemon found at current location.",
 			callback: 	 exploreLoc,
+		},
+		"catch" : {
+			name: 		 "catch",
+			description: "Attempt to catch a Pokemon",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name: 		 "inspect",
+			description: "See details about a Pokemon you've caught",
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name: 	   	 "pokedex",
+			description: "List all caught Pokemon.",
+			callback: 	 commandPokedex,
 		},
 	}
 	return commands

@@ -14,6 +14,8 @@ import
 const interval = (20 * time.Second)
 var pcache *c.Cache
 var lastArea *Area
+var pdex *Pokedex
+var targetData *Pokemon
 
 type Config struct {
 	Count    int    `json:"count"`
@@ -82,25 +84,104 @@ func Start(config *Config, direction string, addParams []string) (*Config){
 	if pcache == nil {
 		pcache = c.NewCache(interval)
 	}
-	locMap, err := getLocBatch(config, direction, pcache, addParams)
+	if pdex == nil {
+		pdex = &Pokedex{Data: make(map[string]Pokemon)}
+	}
+	locMap, err := processAPIcall(config, direction, pcache, addParams)
 
 	if err != nil {
-		fmt.Println("Error getting locations.")
+		fmt.Println("Something went wrong with API call.")
 		return locMap
 	}
 
 	return locMap
 }
 
-func printBatch(locMap *Config) {
-	if locMap == nil {
-		fmt.Println("No locations found, continuing.")
-		return
+func processAPIcall(config *Config, direction string, cache *c.Cache, addParams []string) (*Config, error) {
+	URL := "https://pokeapi.co/api/v2/location-area?offset=0&limit=20"
+
+	switch direction {
+		case "Init":
+			res, err := http.Get(URL)
+			defer res.Body.Close()
+
+			if err != nil {
+				return config, err
+			}
+
+			data, error := io.ReadAll(res.Body)
+			json.Unmarshal(data, &config)
+			
+			if error != nil {
+				return config, fmt.Errorf("error creating request: %w", err)
+			}
+
+			cache.Add(URL, data)
+			printBatch(config)
+			return config, nil
+		
+		case "Next":
+			config, err := nextBatch(config, cache)
+			if err != nil {
+				println("Error getting next batch.")
+				return config, err
+			}
+			return config, err
+
+		case "Previous":
+			config, err := previousBatch(config, cache)
+			if err != nil {
+				println("Error getting previous batch.")
+				return config, err
+			}
+			return config, err
+		
+		case "Explore":
+			err := getLocDetails(config, cache, addParams)
+			return config, err
+		
+		case "Catch":
+			getPokeDetails(cache, addParams)
+			catchPokemon(addParams[0])
+			return config, nil
+		case "Inspect":
+			inspectPokemon(addParams[0])
+			return config, nil
+		case "Pokedex":
+			displayPokedex()
+			return config, nil
+		default:
+			return config, errors.New("Unexpected error with *config")
 	}
-	for _, loc := range locMap.Results {
-		fmt.Println(loc.Name)
+}
+
+func getPokeDetails(cache *c.Cache, addParams []string) error {
+	target := addParams[0]
+	URL := "https://pokeapi.co/api/v2/pokemon/" + target
+
+	if _, ok := cache.Get(URL); ok {
+		fmt.Println("Accessing cached data for Pokemon for URL: " + URL)
+		data, _ := cache.Get(URL)
+		json.Unmarshal(data, &targetData)
+		return nil
 	}
-	return
+
+	res, err := http.Get(URL)
+	defer res.Body.Close()
+
+	if err != nil {
+		fmt.Println("Error getting API call for target.")
+		return err
+	}
+
+	data, error := io.ReadAll(res.Body)
+	json.Unmarshal(data, &targetData)
+	
+	if error != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+	cache.Add(URL, data)
+	return nil
 }
 
 func getLocDetails(config *Config, cache *c.Cache, addParams []string) (error) {
@@ -144,54 +225,6 @@ func printLocDetails() {
 	}
 
 	return
-}
-
-func getLocBatch(config *Config, direction string, cache *c.Cache, addParams []string) (*Config, error) {
-	URL := "https://pokeapi.co/api/v2/location-area?offset=0&limit=20"
-
-	switch direction {
-		case "Init":
-			res, err := http.Get(URL)
-			defer res.Body.Close()
-
-			if err != nil {
-				return config, err
-			}
-
-			data, error := io.ReadAll(res.Body)
-			json.Unmarshal(data, &config)
-			
-			if error != nil {
-				return config, fmt.Errorf("error creating request: %w", err)
-			}
-
-			cache.Add(URL, data)
-			printBatch(config)
-			return config, nil
-		
-		case "Next":
-			config, err := nextBatch(config, cache)
-			if err != nil {
-				println("Error getting next batch.")
-				return config, err
-			}
-			return config, err
-
-		case "Previous":
-			config, err := previousBatch(config, cache)
-			if err != nil {
-				println("Error getting previous batch.")
-				return config, err
-			}
-			return config, err
-		
-		case "Explore":
-			err := getLocDetails(config, cache, addParams)
-			return config, err
-		
-		default:
-			return config, errors.New("Unexpected error with *config")
-	}
 }
 
 func nextBatch(old *Config, cache *c.Cache) (*Config, error) {
@@ -269,4 +302,15 @@ func previousBatch(old *Config, cache *c.Cache) (*Config, error) {
 	} else {
 		return old, errors.New("Error getting previous batch.")
 	}
+}
+
+func printBatch(locMap *Config) {
+	if locMap == nil {
+		fmt.Println("No locations found, continuing.")
+		return
+	}
+	for _, loc := range locMap.Results {
+		fmt.Println(loc.Name)
+	}
+	return
 }
